@@ -231,29 +231,23 @@ showCardView();
 
 
 function initApp() {
-const savedSessionState = loadSession(deck.deckTitle);
+    const savedSessionState = loadSession(deck.deckTitle);
 
- if (savedSessionState) {
- currentFilterSettings = savedSessionState.filterSettings; 
+    if (savedSessionState) {    
+        currentFilterSettings = savedSessionState.filterSettings; 
+    } else {
+        currentFilterSettings = {
+            filterTag: null,
+            repeatOnlyHard: false,
+            shuffle: deck.session.shuffle
+        };
+    }
 
- session = new FlashcardSession(deck, currentFilterSettings);
- }
-
-if (session && session.isSessionCompleted()) {
- showSummary();
- } else if (session && session.getState().sessionStartTime !== 0) {
- showCardView();
- } else {
- if (!savedSessionState) {
- currentFilterSettings = {
- filterTag: null,
- repeatOnlyHard: false,
- shuffle: deck.session.shuffle
- };
- }
- showStartScreen();
- }
+    showStartScreen();
 }
+
+
+initApp();
 
 
 initApp();

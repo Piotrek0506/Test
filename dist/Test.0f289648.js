@@ -871,21 +871,15 @@ function showStartScreen() {
 }
 function initApp() {
     const savedSessionState = (0, _storageJs.loadSession)(deck.deckTitle);
-    if (savedSessionState) {
-        currentFilterSettings = savedSessionState.filterSettings;
-        session = new (0, _sessionJs.FlashcardSession)(deck, currentFilterSettings);
-    }
-    if (session && session.isSessionCompleted()) showSummary();
-    else if (session && session.getState().sessionStartTime !== 0) showCardView();
-    else {
-        if (!savedSessionState) currentFilterSettings = {
-            filterTag: null,
-            repeatOnlyHard: false,
-            shuffle: deck.session.shuffle
-        };
-        showStartScreen();
-    }
+    if (savedSessionState) currentFilterSettings = savedSessionState.filterSettings;
+    else currentFilterSettings = {
+        filterTag: null,
+        repeatOnlyHard: false,
+        shuffle: deck.session.shuffle
+    };
+    showStartScreen();
 }
+initApp();
 initApp();
 
 },{"./data/deck.json":"5jEuQ","./logic/session.js":"heedG","./renderers/index.js":"fKEhE","./storage/storage.js":"lXxpO","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"5jEuQ":[function(require,module,exports,__globalThis) {
@@ -906,7 +900,7 @@ class FlashcardSession {
         this.defaultFilterSettings = filterSettings;
         const savedState = (0, _storageJs.loadSession)(deckData.deckTitle);
         const filterChanged = savedState && JSON.stringify(savedState.filterSettings) !== JSON.stringify(filterSettings);
-        if (savedState && !filterChanged) {
+        if (savedState && !filterChanged && !savedState.isCompleted) {
             this.state = savedState;
             this.cardsInSession = savedState.cardOrderIds.map((id)=>this.deck.cards.find((c)=>c.id === id)).filter((c)=>c !== undefined);
         } else this.state = this.initializeNewSession();
