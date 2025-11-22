@@ -168,4 +168,9 @@ h2 {
   flex: 0 0 20px;
   margin-right: 10px;
 }
+
+#summary-chart {
+  margin: 0 auto;
+  display: block;
+}
 /*# sourceMappingURL=Test.3a01df49.css.map */

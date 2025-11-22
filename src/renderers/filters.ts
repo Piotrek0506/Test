@@ -1,20 +1,13 @@
 import { Deck, FilterSettings } from '../models/index.js';
+import { FlashcardSession } from '../logic/session.js'; 
 
-
-function getUniqueTags(deck: Deck): string[] {
-    const tags = new Set<string>();
-    deck.cards.forEach(card => {
-        if (card.tag) {
-            tags.add(card.tag);
-        }
-    });
-    return Array.from(tags).sort();
-}
-
-
+/**
+ * Generuje HTML dla panelu ustawień i filtrów na ekranie startowym.
+ */
 export function renderFilterPanel(deck: Deck, currentSettings: FilterSettings): string {
-    const uniqueTags = getUniqueTags(deck);
-    
+    const tempSession = new FlashcardSession(deck, currentSettings);
+    const uniqueTags = tempSession.getTagsInDeck();
+
     const tagOptions = uniqueTags.map(tag => 
         `<option value="${tag}" ${currentSettings.filterTag === tag ? 'selected' : ''}>${tag}</option>`
     ).join('');

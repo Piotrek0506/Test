@@ -1,15 +1,55 @@
-import { SessionSummary, FilterSettings, Deck } from '../models/index.js'; 
+import { SessionSummary, FilterSettings, Deck } from '../models/index.js';
 import { FlashcardSession } from '../logic/session.js'; 
 import { renderFilterPanel } from './filters.js'; 
 
 const APP_CONTAINER_ID = 'app';
 const appContainer = document.getElementById(APP_CONTAINER_ID) as HTMLDivElement;
 
+
+/**
+ * Rysuje prosty wykres słupkowy na elemencie Canvas.
+ */
+export function drawBarChart(known: number, notYet: number): void {
+    const canvas = document.getElementById('summary-chart') as HTMLCanvasElement;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Ustawienie rozmiaru canvas i tła
+    canvas.width = 400; 
+    canvas.height = 200;
+
+    const total = known + notYet;
+    const knownHeight = total > 0 ? (known / total) * canvas.height * 0.8 : 0;
+    const notYetHeight = total > 0 ? (notYet / total) * canvas.height * 0.8 : 0;
+    
+    const barWidth = 100;
+    const padding = 20;
+    const startX = (canvas.width - 2 * barWidth - padding) / 2;
+    const baseY = canvas.height * 0.9;
+
+    // Słupek "Znam" (zielony)
+    ctx.fillStyle = '#28a745';
+    ctx.fillRect(startX, baseY - knownHeight, barWidth, knownHeight);
+
+    // Słupek "Jeszcze nie" (czerwony)
+    ctx.fillStyle = '#dc3545';
+    ctx.fillRect(startX + barWidth + padding, baseY - notYetHeight, barWidth, notYetHeight);
+    
+    // Etykiety
+    ctx.fillStyle = '#333';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    
+    ctx.fillText('Znam', startX + barWidth / 2, baseY + 15);
+    ctx.fillText('Nie znam', startX + barWidth + padding + barWidth / 2, baseY + 15);
+}
+
+
 function getStatsPanelHtml(session: FlashcardSession, cardRevealed: boolean): string {
     const state = session.getState();
-
     
-
     let totalTime = '00:00';
     let cardTime = '00:00';
     if (!state.isCompleted) {
@@ -29,7 +69,6 @@ function getStatsPanelHtml(session: FlashcardSession, cardRevealed: boolean): st
 }
 
 
-
 export function renderStartScreen(deck: Deck, currentSettings: FilterSettings): string {
     return `
         <h1>📖 ${deck.deckTitle}</h1>
@@ -45,6 +84,9 @@ export function renderStartScreen(deck: Deck, currentSettings: FilterSettings): 
 }
 
 
+/**
+ * Generuje HTML dla widoku pojedynczej fiszki.
+ */
 export function renderCardViewHtml(session: FlashcardSession, cardRevealed: boolean): string {
     const card = session.getCurrentCard();
     const result = session.getCurrentResult();
@@ -71,6 +113,7 @@ export function renderCardViewHtml(session: FlashcardSession, cardRevealed: bool
 
     const navigationControls = `
         <div class="controls">
+            <button id="main-menu-btn" class="btn btn-nav">Powrót do menu</button>
             <button id="prev-card-btn" class="btn btn-nav" ${session.getState().currentCardIndex === 0 ? 'disabled' : ''}>Poprzednia</button>
             <button id="next-card-btn" class="btn btn-nav" ${isLastCard ? 'disabled' : ''}>Następna</button>
             <button id="finish-session-btn" class="btn btn-primary" ${isFinishActive ? '' : 'disabled'}>Zakończ sesję</button>
@@ -100,6 +143,9 @@ export function renderCardViewHtml(session: FlashcardSession, cardRevealed: bool
 }
 
 
+/**
+ * Generuje HTML dla ekranu podsumowania sesji.
+ */
 export function renderSummaryScreen(title: string, summary: SessionSummary): string {
     const hardCardsList = summary.hardCards.length > 0 ? 
         `
@@ -111,8 +157,18 @@ export function renderSummaryScreen(title: string, summary: SessionSummary): str
         ` : 
         `<p>Brak fiszek oznaczonych jako "Jeszcze nie". Świetna robota!</p>`;
 
+    const chartHtml = `
+        <h2>📊 Rozkład Ocen</h2>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <canvas id="summary-chart" width="400" height="200" style="border: 1px solid #ccc;"></canvas>
+        </div>
+    `;
+
     return `
         <h1>🎉 Podsumowanie Sesji: ${title}</h1>
+        
+        ${chartHtml}
+
         <h2>Wyniki</h2>
         <div class="stats-panel">
             <div class="stat-item">Znam: <strong style="color: #28a745;">${summary.known}</strong></div>

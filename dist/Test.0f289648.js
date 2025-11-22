@@ -714,6 +714,7 @@ function hmrAccept(bundle /*: ParcelRequire */ , id /*: string */ ) {
 }
 
 },{}],"gNc1f":[function(require,module,exports,__globalThis) {
+// @ts-ignore
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 var _deckJson = require("./data/deck.json");
 var _deckJsonDefault = parcelHelpers.interopDefault(_deckJson);
@@ -724,23 +725,59 @@ const app = document.getElementById('app');
 const deck = (0, _deckJsonDefault.default);
 let session = null;
 let cardRevealed = false;
+// Globalny obiekt przechowujący AKTUALNIE WYBRANE FILTRY na ekranie startowym.
+// Używamy tego do rozpoczęcia nowej sesji, gdy użytkownik kliknie "Rozpocznij".
 let currentFilterSettings = {
     filterTag: null,
     repeatOnlyHard: false,
     shuffle: deck.session.shuffle
 };
-function updateStatsPanel(totalTime, cardTime) {
+/**
+ * Aktualizuje panel statystyk (liczniki czasowe)
+ */ function updateStatsPanel(totalTime, cardTime) {
     const totalTimer = document.getElementById('session-timer');
     const cardTimer = document.getElementById('card-timer');
     if (totalTimer) totalTimer.textContent = totalTime;
     if (cardTimer) cardTimer.textContent = cardTime;
 }
-function showCardView(newCard = true) {
+/**
+ * Przełącza do ekranu głównego, resetując bieżący stan sesji.
+ * Koryguje: Resetuje stan, aby można było rozpocząć nową sesję z nowymi filtrami.
+ */ function goToStartScreen() {
+    if (session) {
+        session.stopTimer();
+        // KLUCZOWA ZMIANA: Usuwamy stan sesji z localStorage, 
+        // aby następny start był NOWĄ sesją z bieżącymi filtrami.
+        (0, _storageJs.clearSession)(deck.deckTitle);
+    }
+    session = null;
+    cardRevealed = false;
+    showStartScreen();
+}
+/**
+ * Renderuje widok fiszki i podpina event listenery.
+ */ function showCardView(newCard = true) {
     if (!session) return;
+    // Zabezpieczenie przed brakiem kart po filtrowaniu
+    if (session.getState().cardOrderIds.length === 0) {
+        alert("Brak fiszek spe\u0142niaj\u0105cych kryteria filtrowania. Zmie\u0144 ustawienia i spr\xf3buj ponownie.");
+        goToStartScreen();
+        return;
+    }
+    // Weryfikacja, czy sesja została właśnie zakończona
+    if (session.isSessionCompleted()) {
+        showSummary();
+        return;
+    }
     if (newCard) cardRevealed = session.isCurrentCardGraded();
     app.innerHTML = (0, _indexJs.renderCardViewHtml)(session, cardRevealed);
+    // Uruchomienie/Zatrzymanie timera
     session.stopTimer();
-    if (!session.getState().isCompleted && deck.session.showTimer) session.startTimer(updateStatsPanel);
+    if (deck.session.showTimer) session.startTimer(updateStatsPanel);
+    // --- Event Listenery ---
+    // NAPRAWIONE: Przycisk powrotu do menu w trakcie sesji
+    document.getElementById('main-menu-btn')?.addEventListener('click', goToStartScreen);
+    // ... (pozostała obsługa przycisków na fiszce bez zmian)
     document.getElementById('show-answer-btn')?.addEventListener('click', ()=>{
         cardRevealed = true;
         showCardView(false);
@@ -766,23 +803,28 @@ function showCardView(newCard = true) {
         }
     });
 }
-function handleCardGraded() {
-    if (session.getState().isCompleted) showSummary();
-    else {
-        if (session.goToNext()) showCardView();
-        else if (session.isFinishButtonActive()) showSummary();
+/**
+ * Obsługa zdarzenia po ocenie fiszki.
+ * Koryguje: Przejście do podsumowania zaraz po ostatniej ocenie.
+ */ function handleCardGraded() {
+    if (session.isSessionCompleted()) {
+        showSummary();
+        return;
     }
+    // Jeśli nie jest ostatnia karta, przejdź do następnej
+    if (session.goToNext()) showCardView();
 }
-function showSummary() {
+/**
+ * Renderuje widok podsumowania.
+ */ function showSummary() {
     if (!session) return;
     session.stopTimer();
     const summary = session.getSummary();
     app.innerHTML = (0, _indexJs.renderSummaryScreen)(deck.deckTitle, summary);
-    document.getElementById('return-to-start-btn')?.addEventListener('click', ()=>{
-        session = null;
-        cardRevealed = false;
-        showStartScreen();
-    });
+    (0, _indexJs.drawBarChart)(summary.known, summary.notYet);
+    // Powrót do ekranu startowego (zawsze po zakończeniu/podsumowaniu)
+    document.getElementById('return-to-start-btn')?.addEventListener('click', goToStartScreen);
+    // Obsługa powtórki trudnych
     document.getElementById('repeat-hard-btn')?.addEventListener('click', ()=>{
         const newSession = session.resetForHardCards();
         if (newSession.getState().cardOrderIds.length > 0) {
@@ -792,15 +834,19 @@ function showSummary() {
             showCardView();
         } else {
             alert("Brak trudnych fiszek do powt\xf3rki. Zaczynamy normaln\u0105 sesj\u0119.");
-            showStartScreen();
+            goToStartScreen();
         }
     });
 }
-function showStartScreen() {
+/**
+ * Renderuje widok startowy i podpina event listenery.
+ */ function showStartScreen() {
     app.innerHTML = (0, _indexJs.renderStartScreen)(deck, currentFilterSettings);
+    // Ustawienie wartości formularza na podstawie globalnego stanu currentFilterSettings
     document.getElementById('tag-filter').value = currentFilterSettings.filterTag || '';
     document.getElementById('shuffle-setting').checked = currentFilterSettings.shuffle;
     document.getElementById('repeat-hard-setting').checked = currentFilterSettings.repeatOnlyHard;
+    // ... (Obsługa zmian filtrów bez zmian)
     document.getElementById('tag-filter')?.addEventListener('change', (e)=>{
         currentFilterSettings.filterTag = e.target.value || null;
         currentFilterSettings.repeatOnlyHard = false;
@@ -816,8 +862,10 @@ function showStartScreen() {
             document.getElementById('tag-filter').value = '';
         }
     });
+    // Start sesji: Tworzy sesję na podstawie AKTUALLYCH WARTOŚCI currentFilterSettings.
     document.getElementById('start-session-btn')?.addEventListener('click', ()=>{
         session = new (0, _sessionJs.FlashcardSession)(deck, currentFilterSettings);
+        // Zapisujemy ostateczne, zatwierdzone filtry sesji
         currentFilterSettings = session.getState().filterSettings;
         if (session.getState().cardOrderIds.length > 0) showCardView();
         else {
@@ -826,15 +874,19 @@ function showStartScreen() {
         }
     });
 }
-function initApp() {
+/**
+ * Inicjalizacja aplikacji.
+ */ function initApp() {
     const savedSessionState = (0, _storageJs.loadSession)(deck.deckTitle);
     if (savedSessionState) {
+        // Wczytanie zapisanych filtrów, jeśli istnieje zapisana sesja
         currentFilterSettings = savedSessionState.filterSettings;
         session = new (0, _sessionJs.FlashcardSession)(deck, currentFilterSettings);
     }
-    if (session && session.getState().isCompleted) showSummary();
+    if (session && session.isSessionCompleted()) showSummary();
     else if (session && session.getState().sessionStartTime !== 0) showCardView();
     else {
+        // Ustawienie domyślnych filtrów przy pierwszym uruchomieniu
         currentFilterSettings = {
             filterTag: null,
             repeatOnlyHard: false,
@@ -843,6 +895,7 @@ function initApp() {
         showStartScreen();
     }
 }
+// Uruchomienie aplikacji
 initApp();
 
 },{"./data/deck.json":"5jEuQ","./logic/session.js":"heedG","./renderers/index.js":"fKEhE","./storage/storage.js":"lXxpO","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"5jEuQ":[function(require,module,exports,__globalThis) {
@@ -852,7 +905,7 @@ module.exports = JSON.parse('{"deckTitle":"Angielski: Podstawowe czasowniki i rz
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "FlashcardSession", ()=>FlashcardSession);
-var _storageJs = require("../storage/storage.js"); // Dodano getDeckResults
+var _storageJs = require("../storage/storage.js");
 const ONE_SECOND = 1000;
 class FlashcardSession {
     constructor(deckData, filterSettings){
@@ -868,6 +921,7 @@ class FlashcardSession {
         } else this.state = this.initializeNewSession();
         if (!this.state.isCompleted) this.cardStartTime = Date.now();
     }
+    // --- Inicjalizacja i Pomocnicze ---
     shuffleArray(array) {
         for(let i = array.length - 1; i > 0; i--){
             const j = Math.floor(Math.random() * (i + 1));
@@ -882,21 +936,32 @@ class FlashcardSession {
             ...this.deck.cards
         ];
         const settings = this.defaultFilterSettings;
+        // 1. FILTRUJ PO TAGACH
         if (settings.filterTag) filteredCards = filteredCards.filter((c)=>c.tag === settings.filterTag);
+        // 2. TRYB POWTÓRZ TYLKO TRUDNE
         if (settings.repeatOnlyHard) {
             const allResults = (0, _storageJs.getDeckResults)(this.deck.deckTitle);
-            const hardCardIds = allResults.filter((r)=>r.grade === 'NotYet').map((r)=>r.cardId);
-            filteredCards = filteredCards.filter((c)=>hardCardIds.includes(c.id));
-            if (filteredCards.length === 0) {
+            const hardCardIds = new Set(allResults.filter((r)=>r.grade === 'NotYet').map((r)=>r.cardId));
+            const previouslyHardCards = filteredCards.filter((c)=>hardCardIds.has(c.id));
+            if (previouslyHardCards.length > 0) filteredCards = previouslyHardCards;
+            else {
                 console.warn("Brak trudnych fiszek do powt\xf3rki. Rozpoczynam normaln\u0105 sesj\u0119.");
-                filteredCards = [
-                    ...this.deck.cards
-                ];
                 settings.repeatOnlyHard = false;
             }
         }
         this.cardsInSession = filteredCards;
         if (settings.shuffle) this.shuffleArray(this.cardsInSession);
+        if (this.cardsInSession.length === 0) // Zwracamy stan ukończony, jeśli po filtrach nie ma kart
+        return {
+            deckTitle: this.deck.deckTitle,
+            cardOrderIds: [],
+            currentCardIndex: 0,
+            sessionStartTime: 0,
+            results: [],
+            isCompleted: true,
+            lastReviewDate: 0,
+            filterSettings: settings
+        };
         const initialResults = this.cardsInSession.map((card)=>({
                 cardId: card.id,
                 grade: null,
@@ -915,6 +980,7 @@ class FlashcardSession {
         };
     }
     getCurrentCard() {
+        if (this.cardsInSession.length === 0) throw new Error("Brak fiszek w sesji. Sprawd\u017A filtry.");
         return this.cardsInSession[this.state.currentCardIndex];
     }
     getCurrentResult() {
@@ -924,7 +990,9 @@ class FlashcardSession {
     getState() {
         return this.state;
     }
-    gradeCard(grade) {
+    /**
+     * Ocenia bieżącą fiszkę. Rejestruje czas i wynik.
+     */ gradeCard(grade) {
         const currentResult = this.getCurrentResult();
         if (currentResult.grade !== null) {
             console.warn("Fiszka ju\u017C oceniona, edycja zablokowana.");
@@ -935,10 +1003,11 @@ class FlashcardSession {
         currentResult.grade = grade;
         currentResult.timeSpentMs = timeSpent;
         currentResult.reviewedAt = now;
-        this.checkCompletion();
         (0, _storageJs.saveSession)(this.state);
+        this.checkCompletion();
         this.cardStartTime = Date.now();
     }
+    // --- Nawigacja ---
     goToNext() {
         if (this.state.currentCardIndex < this.cardsInSession.length - 1) {
             this.state.currentCardIndex++;
@@ -957,14 +1026,18 @@ class FlashcardSession {
         }
         return false;
     }
-    checkCompletion() {
+    /**
+     * Sprawdza, czy wszystkie karty zostały ocenione i ustawia flagę isCompleted.
+     */ checkCompletion() {
         const allGraded = this.state.results.every((r)=>r.grade !== null);
         if (allGraded && !this.state.isCompleted) {
             this.state.isCompleted = true;
             this.stopTimer();
+            // Finalny zapis stanu po ukończeniu sesji
             (0, _storageJs.saveSession)(this.state);
         }
     }
+    // --- Statystyki i Timery ---
     getTimeOnCurrentCardMs() {
         const currentResult = this.getCurrentResult();
         if (currentResult.grade !== null) return currentResult.timeSpentMs;
@@ -972,16 +1045,15 @@ class FlashcardSession {
     }
     getTotalSessionTimeMs() {
         if (this.state.isCompleted) {
-            const lastReviewedTime = Math.max(...this.state.results.map((r)=>r.reviewedAt));
+            const lastReviewedTime = Math.max(0, ...this.state.results.map((r)=>r.reviewedAt));
             return lastReviewedTime - this.state.sessionStartTime;
         }
         const timeInCurrentCard = Date.now() - this.cardStartTime;
-        const timeInPreviousCards = this.state.results.filter((_, index)=>index < this.state.currentCardIndex).reduce((sum, r)=>sum + r.timeSpentMs, 0);
+        const timeInPreviousCards = this.state.results.filter((_, index)=>index < this.state.currentCardIndex && this.state.results[index].grade !== null).reduce((sum, r)=>sum + r.timeSpentMs, 0);
         return timeInPreviousCards + timeInCurrentCard;
     }
     startTimer(callback) {
-        if (this.timerInterval !== null) return;
-        if (this.state.isCompleted) return;
+        if (this.timerInterval !== null || this.state.isCompleted) return;
         this.timerInterval = setInterval(()=>{
             const totalTimeStr = this.formatTime(this.getTotalSessionTimeMs());
             const cardTimeStr = this.formatTime(this.getTimeOnCurrentCardMs());
@@ -1009,9 +1081,8 @@ class FlashcardSession {
     }
     getSummary() {
         const gradedResults = this.state.results.filter((r)=>r.grade !== null);
-        const totalCards = this.cardsInSession.length;
         const totalTimeGraded = gradedResults.reduce((sum, r)=>sum + r.timeSpentMs, 0);
-        const finalTotalTimeMs = this.state.isCompleted ? Math.max(...this.state.results.map((r)=>r.reviewedAt)) - this.state.sessionStartTime : this.getTotalSessionTimeMs();
+        const finalTotalTimeMs = this.state.isCompleted ? Math.max(0, ...this.state.results.map((r)=>r.reviewedAt)) - this.state.sessionStartTime : this.getTotalSessionTimeMs();
         const avgTimeMs = gradedResults.length > 0 ? totalTimeGraded / gradedResults.length : 0;
         const hardCardsIds = this.state.results.filter((r)=>r.grade === 'NotYet').map((r)=>r.cardId);
         const hardCards = this.deck.cards.filter((card)=>hardCardsIds.includes(card.id));
@@ -1024,37 +1095,53 @@ class FlashcardSession {
         };
     }
     isFinishButtonActive() {
+        // Zakończenie sesji jest możliwe tylko wtedy, gdy wszystkie karty są ocenione
         return this.state.isCompleted;
     }
     isCurrentCardGraded() {
         return this.getCurrentResult().grade !== null;
     }
+    isSessionCompleted() {
+        return this.state.isCompleted;
+    }
     resetForHardCards() {
-        const summary = this.getSummary();
         const newSettings = {
             shuffle: this.state.filterSettings.shuffle,
-            filterTag: this.state.filterSettings.filterTag,
+            filterTag: null,
             repeatOnlyHard: true
         };
         return new FlashcardSession(this.deck, newSettings);
     }
-    getTagSummary() {
-        const tagMap = new Map();
+    getTagsInDeck() {
+        const tags = new Set();
         this.deck.cards.forEach((card)=>{
-            const tag = card.tag || 'Bez tagu';
-            tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
+            if (card.tag) tags.add(card.tag);
         });
-        return tagMap;
+        return Array.from(tags).sort();
     }
 }
 
 },{"../storage/storage.js":"lXxpO","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"lXxpO":[function(require,module,exports,__globalThis) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "saveSession", ()=>saveSession);
-parcelHelpers.export(exports, "loadSession", ()=>loadSession);
-parcelHelpers.export(exports, "clearSession", ()=>clearSession);
-parcelHelpers.export(exports, "getDeckResults", ()=>getDeckResults);
+/**
+ * Zapisuje stan sesji do localStorage.
+ * @param state - aktualny stan sesji.
+ */ parcelHelpers.export(exports, "saveSession", ()=>saveSession);
+/**
+ * Wczytuje stan sesji z localStorage.
+ * @param deckTitle - tytuł talii.
+ * @returns Zapisany stan sesji lub null.
+ */ parcelHelpers.export(exports, "loadSession", ()=>loadSession);
+/**
+ * Usuwa stan sesji z localStorage.
+ * @param deckTitle - tytuł talii.
+ */ parcelHelpers.export(exports, "clearSession", ()=>clearSession);
+/**
+ * Wczytuje poprzednie wyniki (CardResult[]) dla danej talii (do trybu powtórki).
+ * @param deckTitle - tytuł talii.
+ * @returns Tablica CardResult[] lub pusta tablica, jeśli brak danych.
+ */ parcelHelpers.export(exports, "getDeckResults", ()=>getDeckResults);
 const STORAGE_KEY_PREFIX = 'flashcard_session_';
 function saveSession(state) {
     const key = STORAGE_KEY_PREFIX + state.deckTitle;
@@ -1073,6 +1160,7 @@ function loadSession(deckTitle) {
             const loadedState = JSON.parse(json);
             return {
                 ...loadedState,
+                // Zapewnienie kompatybilności wstecznej dla starszych zapisów
                 filterSettings: loadedState.filterSettings || {
                     shuffle: true,
                     filterTag: null,
@@ -1127,12 +1215,47 @@ exports.export = function(dest, destName, get) {
 },{}],"fKEhE":[function(require,module,exports,__globalThis) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
+/**
+ * Rysuje prosty wykres słupkowy na elemencie Canvas.
+ */ parcelHelpers.export(exports, "drawBarChart", ()=>drawBarChart);
 parcelHelpers.export(exports, "renderStartScreen", ()=>renderStartScreen);
-parcelHelpers.export(exports, "renderCardViewHtml", ()=>renderCardViewHtml);
-parcelHelpers.export(exports, "renderSummaryScreen", ()=>renderSummaryScreen);
+/**
+ * Generuje HTML dla widoku pojedynczej fiszki.
+ */ parcelHelpers.export(exports, "renderCardViewHtml", ()=>renderCardViewHtml);
+/**
+ * Generuje HTML dla ekranu podsumowania sesji.
+ */ parcelHelpers.export(exports, "renderSummaryScreen", ()=>renderSummaryScreen);
 var _filtersJs = require("./filters.js");
 const APP_CONTAINER_ID = 'app';
 const appContainer = document.getElementById(APP_CONTAINER_ID);
+function drawBarChart(known, notYet) {
+    const canvas = document.getElementById('summary-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    // Ustawienie rozmiaru canvas i tła
+    canvas.width = 400;
+    canvas.height = 200;
+    const total = known + notYet;
+    const knownHeight = total > 0 ? known / total * canvas.height * 0.8 : 0;
+    const notYetHeight = total > 0 ? notYet / total * canvas.height * 0.8 : 0;
+    const barWidth = 100;
+    const padding = 20;
+    const startX = (canvas.width - 2 * barWidth - padding) / 2;
+    const baseY = canvas.height * 0.9;
+    // Słupek "Znam" (zielony)
+    ctx.fillStyle = '#28a745';
+    ctx.fillRect(startX, baseY - knownHeight, barWidth, knownHeight);
+    // Słupek "Jeszcze nie" (czerwony)
+    ctx.fillStyle = '#dc3545';
+    ctx.fillRect(startX + barWidth + padding, baseY - notYetHeight, barWidth, notYetHeight);
+    // Etykiety
+    ctx.fillStyle = '#333';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Znam', startX + barWidth / 2, baseY + 15);
+    ctx.fillText('Nie znam', startX + barWidth + padding + barWidth / 2, baseY + 15);
+}
 function getStatsPanelHtml(session, cardRevealed) {
     const state = session.getState();
     let totalTime = '00:00';
@@ -1183,6 +1306,7 @@ function renderCardViewHtml(session, cardRevealed) {
     const isFinishActive = session.isFinishButtonActive();
     const navigationControls = `
         <div class="controls">
+            <button id="main-menu-btn" class="btn btn-nav">Powr\xf3t do menu</button>
             <button id="prev-card-btn" class="btn btn-nav" ${session.getState().currentCardIndex === 0 ? 'disabled' : ''}>Poprzednia</button>
             <button id="next-card-btn" class="btn btn-nav" ${isLastCard ? 'disabled' : ''}>Nast\u{119}pna</button>
             <button id="finish-session-btn" class="btn btn-primary" ${isFinishActive ? '' : 'disabled'}>Zako\u{144}cz sesj\u{119}</button>
@@ -1216,8 +1340,17 @@ function renderSummaryScreen(title, summary) {
         </ul>
         <button id="repeat-hard-btn" class="btn btn-danger" style="margin-top: 15px;">Powt\xf3rz tylko trudne</button>
         ` : `<p>Brak fiszek oznaczonych jako "Jeszcze nie". \u{15A}wietna robota!</p>`;
+    const chartHtml = `
+        <h2>\u{1F4CA} Rozk\u{142}ad Ocen</h2>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <canvas id="summary-chart" width="400" height="200" style="border: 1px solid #ccc;"></canvas>
+        </div>
+    `;
     return `
         <h1>\u{1F389} Podsumowanie Sesji: ${title}</h1>
+        
+        ${chartHtml}
+
         <h2>Wyniki</h2>
         <div class="stats-panel">
             <div class="stat-item">Znam: <strong style="color: #28a745;">${summary.known}</strong></div>
@@ -1239,16 +1372,13 @@ function renderSummaryScreen(title, summary) {
 },{"./filters.js":"hxUaN","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"hxUaN":[function(require,module,exports,__globalThis) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "renderFilterPanel", ()=>renderFilterPanel);
-function getUniqueTags(deck) {
-    const tags = new Set();
-    deck.cards.forEach((card)=>{
-        if (card.tag) tags.add(card.tag);
-    });
-    return Array.from(tags).sort();
-}
+/**
+ * Generuje HTML dla panelu ustawień i filtrów na ekranie startowym.
+ */ parcelHelpers.export(exports, "renderFilterPanel", ()=>renderFilterPanel);
+var _sessionJs = require("../logic/session.js");
 function renderFilterPanel(deck, currentSettings) {
-    const uniqueTags = getUniqueTags(deck);
+    const tempSession = new (0, _sessionJs.FlashcardSession)(deck, currentSettings);
+    const uniqueTags = tempSession.getTagsInDeck();
     const tagOptions = uniqueTags.map((tag)=>`<option value="${tag}" ${currentSettings.filterTag === tag ? 'selected' : ''}>${tag}</option>`).join('');
     return `
         <h2>\u{2699}\u{FE0F} Opcje Sesji</h2>
@@ -1276,6 +1406,6 @@ function renderFilterPanel(deck, currentSettings) {
     `;
 }
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}]},["elbaT","gNc1f"], "gNc1f", "parcelRequire170a", {})
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","../logic/session.js":"heedG"}]},["elbaT","gNc1f"], "gNc1f", "parcelRequire170a", {})
 
 //# sourceMappingURL=Test.0f289648.js.map
