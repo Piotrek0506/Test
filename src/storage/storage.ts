@@ -1,4 +1,4 @@
-import { SessionState } from '../models';
+import { SessionState } from '../models/index.js'; 
 
 const STORAGE_KEY_PREFIX = 'flashcard_session_';
 
@@ -9,6 +9,7 @@ const STORAGE_KEY_PREFIX = 'flashcard_session_';
 export function saveSession(state: SessionState): void {
     const key = STORAGE_KEY_PREFIX + state.deckTitle;
     try {
+        // Aktualizujemy datę ostatniego przeglądu przy zapisie
         state.lastReviewDate = Date.now(); 
         localStorage.setItem(key, JSON.stringify(state));
     } catch (e) {

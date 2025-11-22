@@ -1,2 +1,141 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+}
 
+body {
+  color: #333;
+  background-color: #f4f4f9;
+  justify-content: center;
+  padding: 20px;
+  display: flex;
+}
+
+.container {
+  background: #fff;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 600px;
+  padding: 30px;
+  box-shadow: 0 4px 12px #0000001a;
+}
+
+h1 {
+  color: #4a4e69;
+  border-bottom: 2px solid #ccc;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+}
+
+h2 {
+  color: #6a0572;
+  margin-bottom: 15px;
+}
+
+.btn {
+  cursor: pointer;
+  border: none;
+  border-radius: 5px;
+  margin: 5px;
+  padding: 10px 15px;
+  font-weight: bold;
+  transition: background-color .2s;
+}
+
+.btn-primary {
+  color: #fff;
+  background-color: #4caf50;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.btn-secondary {
+  color: #fff;
+  background-color: #007bff;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.btn-success {
+  color: #fff;
+  background-color: #28a745;
+}
+
+.btn-danger {
+  color: #fff;
+  background-color: #dc3545;
+}
+
+.btn-nav {
+  color: #fff;
+  background-color: #6c757d;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  background-color: #ccc;
+}
+
+.card-view {
+  text-align: center;
+}
+
+.flashcard {
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 150px;
+  margin: 20px 0;
+  padding: 40px 20px;
+  font-size: 1.5em;
+  font-weight: 600;
+  display: flex;
+}
+
+.card-back {
+  color: #6a0572;
+  margin-top: 15px;
+}
+
+.controls, .grading-controls {
+  margin-top: 20px;
+}
+
+.stats-panel {
+  background: #e9ecef;
+  border-radius: 5px;
+  justify-content: space-around;
+  margin-bottom: 20px;
+  padding: 15px;
+  font-size: .9em;
+  display: flex;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-item strong {
+  font-size: 1.2em;
+  display: block;
+}
+
+.summary-item {
+  border-bottom: 1px dashed #eee;
+  padding: 8px 0;
+}
+
+.hard-cards-list {
+  margin-top: 15px;
+  padding-left: 20px;
+}
 /*# sourceMappingURL=Test.3a01df49.css.map */

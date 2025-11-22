@@ -1,0 +1,141 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+}
+
+body {
+    background-color: #f4f4f9;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.container {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 600px;
+    padding: 30px;
+}
+
+
+h1 {
+    color: #4a4e69;
+    border-bottom: 2px solid #ccc;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+h2 {
+    color: #6a0572;
+    margin-bottom: 15px;
+}
+
+
+.btn {
+    padding: 10px 15px;
+    margin: 5px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.btn-primary {
+    background-color: #4CAF50; 
+    color: white;
+}
+.btn-primary:hover:not(:disabled) {
+    background-color: #45a049;
+}
+
+.btn-secondary {
+    background-color: #007BFF; 
+    color: white;
+}
+.btn-secondary:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+.btn-success {
+    background-color: #28a745; 
+    color: white;
+}
+
+.btn-danger {
+    background-color: #dc3545; 
+    color: white;
+}
+
+.btn-nav {
+    background-color: #6c757d; 
+    color: white;
+}
+
+.btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+
+.card-view {
+    text-align: center;
+}
+
+.flashcard {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 40px 20px;
+    margin: 20px 0;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5em;
+    font-weight: 600;
+}
+
+.card-back {
+    margin-top: 15px;
+    color: #6a0572;
+}
+
+.controls, .grading-controls {
+    margin-top: 20px;
+}
+
+.stats-panel {
+    background: #e9ecef;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-size: 0.9em;
+    display: flex;
+    justify-content: space-around;
+}
+
+.stat-item {
+    text-align: center;
+}
+.stat-item strong {
+    display: block;
+    font-size: 1.2em;
+}
+
+
+.summary-item {
+    padding: 8px 0;
+    border-bottom: 1px dashed #eee;
+}
+
+.hard-cards-list {
+    margin-top: 15px;
+    padding-left: 20px;
+}

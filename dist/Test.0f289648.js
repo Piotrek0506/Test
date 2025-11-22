@@ -714,7 +714,497 @@ function hmrAccept(bundle /*: ParcelRequire */ , id /*: string */ ) {
 }
 
 },{}],"gNc1f":[function(require,module,exports,__globalThis) {
+// @ts-ignore
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+var _deckJson = require("./data/deck.json");
+var _deckJsonDefault = parcelHelpers.interopDefault(_deckJson);
+var _sessionJs = require("./logic/session.js");
+var _indexJs = require("./renderers/index.js");
+var _storageJs = require("./storage/storage.js"); // Zmieniono z clearSession na loadSession
+const app = document.getElementById('app');
+const deck = (0, _deckJsonDefault.default);
+let session = null;
+let cardRevealed = false;
+/**
+ * Aktualizuje panel statystyk (liczniki czasowe)
+ */ function updateStatsPanel(totalTime, cardTime) {
+    const totalTimer = document.getElementById('session-timer');
+    const cardTimer = document.getElementById('card-timer');
+    if (totalTimer) totalTimer.textContent = totalTime;
+    if (cardTimer) cardTimer.textContent = cardTime;
+}
+/**
+ * Renderuje widok fiszki i podpina event listenery.
+ */ function showCardView(newCard = true) {
+    if (!session) return;
+    // Jeśli przechodzimy do nowej fiszki, ukryj odpowiedź, chyba że jest już oceniona.
+    if (newCard) cardRevealed = session.isCurrentCardGraded();
+    app.innerHTML = (0, _indexJs.renderCardViewHtml)(session, cardRevealed);
+    // Uruchomienie/Zatrzymanie timera
+    session.stopTimer();
+    if (!session.getState().isCompleted && deck.session.showTimer) session.startTimer(updateStatsPanel);
+    // --- Event Listenery ---
+    // 1. Pokaż odpowiedź
+    document.getElementById('show-answer-btn')?.addEventListener('click', ()=>{
+        cardRevealed = true;
+        showCardView(false); // Ponowne renderowanie bez zmiany stanu sesji
+    });
+    // 2. Ocena: Znam
+    document.getElementById('grade-known-btn')?.addEventListener('click', ()=>{
+        session.gradeCard('Known');
+        handleCardGraded();
+    });
+    // 3. Ocena: Jeszcze nie
+    document.getElementById('grade-notyet-btn')?.addEventListener('click', ()=>{
+        session.gradeCard('NotYet');
+        handleCardGraded();
+    });
+    // 4. Nawigacja
+    document.getElementById('prev-card-btn')?.addEventListener('click', ()=>{
+        if (session.goToPrevious()) showCardView();
+    });
+    document.getElementById('next-card-btn')?.addEventListener('click', ()=>{
+        if (session.goToNext()) showCardView();
+    });
+    // 5. Zakończ
+    document.getElementById('finish-session-btn')?.addEventListener('click', ()=>{
+        if (session?.isFinishButtonActive()) {
+            session.stopTimer();
+            showSummary();
+        }
+    });
+}
+/**
+ * Obsługa zdarzenia po ocenie fiszki.
+ */ function handleCardGraded() {
+    if (session.getState().isCompleted) showSummary();
+    else // Przechodzi do następnej fiszki
+    if (session.goToNext()) showCardView();
+}
+/**
+ * Renderuje widok podsumowania.
+ */ function showSummary() {
+    if (!session) return;
+    session.stopTimer();
+    const summary = session.getSummary();
+    app.innerHTML = (0, _indexJs.renderSummaryScreen)(deck.deckTitle, summary);
+    // Powrót do startowego
+    document.getElementById('return-to-start-btn')?.addEventListener('click', ()=>{
+        // clearSession(deck.deckTitle); // Opcjonalnie kasowanie stanu
+        session = null;
+        cardRevealed = false;
+        showStartScreen();
+    });
+}
+/**
+ * Renderuje widok startowy i podpina event listenery.
+ */ function showStartScreen() {
+    app.innerHTML = (0, _indexJs.renderStartScreen)(deck.deckTitle, deck.cards.length);
+    // Start sesji
+    document.getElementById('start-session-btn')?.addEventListener('click', ()=>{
+        // Tworzymy nową sesję, która wczyta zapisany stan lub zainicjalizuje nową.
+        session = new (0, _sessionJs.FlashcardSession)(deck);
+        showCardView();
+    });
+}
+/**
+ * Inicjalizacja aplikacji na podstawie stanu (localStorage).
+ */ function initApp() {
+    // Sprawdzamy, czy istnieje zapisana sesja
+    const savedSessionState = (0, _storageJs.loadSession)(deck.deckTitle);
+    if (savedSessionState && savedSessionState.isCompleted) {
+        session = new (0, _sessionJs.FlashcardSession)(deck);
+        showSummary();
+    } else if (savedSessionState && savedSessionState.sessionStartTime !== 0) {
+        session = new (0, _sessionJs.FlashcardSession)(deck);
+        showCardView();
+    } else showStartScreen();
+}
+// Uruchomienie aplikacji
+initApp();
 
-},{}]},["elbaT","gNc1f"], "gNc1f", "parcelRequire170a", {})
+},{"./data/deck.json":"5jEuQ","./logic/session.js":"heedG","./renderers/index.js":"fKEhE","./storage/storage.js":"lXxpO","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"5jEuQ":[function(require,module,exports,__globalThis) {
+module.exports = JSON.parse('{"deckTitle":"Angielski: Podstawowe czasowniki i rzeczowniki (22 szt.)","cards":[{"id":1,"front":"to go","back":"i\u015B\u0107, jecha\u0107","tag":"czasowniki"},{"id":2,"front":"to make","back":"robi\u0107, tworzy\u0107","tag":"czasowniki"},{"id":3,"front":"house","back":"dom","tag":"rzeczowniki"},{"id":4,"front":"water","back":"woda","tag":"rzeczowniki"},{"id":5,"front":"to see","back":"widzie\u0107","tag":"czasowniki"},{"id":6,"front":"book","back":"ksi\u0105\u017Cka","tag":"rzeczowniki"},{"id":7,"front":"to take","back":"bra\u0107, zabiera\u0107","tag":"czasowniki"},{"id":8,"front":"time","back":"czas","tag":"rzeczowniki"},{"id":9,"front":"to come","back":"przychodzi\u0107","tag":"czasowniki"},{"id":10,"front":"person","back":"osoba","tag":"rzeczowniki"},{"id":11,"front":"to think","back":"my\u015Ble\u0107","tag":"czasowniki"},{"id":12,"front":"world","back":"\u015Bwiat","tag":"rzeczowniki"},{"id":13,"front":"to look","back":"patrze\u0107","tag":"czasowniki"},{"id":14,"front":"hand","back":"r\u0119ka","tag":"rzeczowniki"},{"id":15,"front":"to give","back":"dawa\u0107","tag":"czasowniki"},{"id":16,"front":"money","back":"pieni\u0105dze","tag":"rzeczowniki"},{"id":17,"front":"to tell","back":"m\xf3wi\u0107, opowiada\u0107","tag":"czasowniki"},{"id":18,"front":"fact","back":"fakt","tag":"rzeczowniki"},{"id":19,"front":"to find","back":"znajdowa\u0107","tag":"czasowniki"},{"id":20,"front":"problem","back":"problem","tag":"rzeczowniki"},{"id":21,"front":"to use","back":"u\u017Cywa\u0107","tag":"czasowniki"},{"id":22,"front":"system","back":"system","tag":"rzeczowniki"}],"session":{"shuffle":true,"showTimer":true}}');
+
+},{}],"heedG":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "FlashcardSession", ()=>FlashcardSession);
+var _storage = require("../storage/storage");
+const ONE_SECOND = 1000;
+class FlashcardSession {
+    constructor(deckData){
+        this.cardsInSession = [] // Uporządkowane fiszki na czas sesji
+        ;
+        this.cardStartTime = 0 // Pomiar czasu dla bieżącej fiszki
+        ;
+        this.timerInterval = null;
+        this.deck = deckData;
+        const savedState = (0, _storage.loadSession)(deckData.deckTitle);
+        if (savedState) {
+            this.state = savedState;
+            // Odtworzenie kolejności fiszek z zapisanego stanu
+            this.cardsInSession = savedState.cardOrderIds.map((id)=>this.deck.cards.find((c)=>c.id === id)).filter((c)=>c !== undefined);
+        } else this.state = this.initializeNewSession();
+        // Ustawienie czasu startu dla bieżącej fiszki, jeśli sesja trwa
+        if (!this.state.isCompleted) this.cardStartTime = Date.now();
+    }
+    // --- Inicjalizacja i Pomocnicze ---
+    shuffleArray(array) {
+        for(let i = array.length - 1; i > 0; i--){
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [
+                array[j],
+                array[i]
+            ];
+        }
+    }
+    initializeNewSession() {
+        this.cardsInSession = [
+            ...this.deck.cards
+        ];
+        if (this.deck.session.shuffle) this.shuffleArray(this.cardsInSession);
+        const initialResults = this.cardsInSession.map((card)=>({
+                cardId: card.id,
+                grade: null,
+                timeSpentMs: 0,
+                reviewedAt: 0
+            }));
+        return {
+            deckTitle: this.deck.deckTitle,
+            cardOrderIds: this.cardsInSession.map((c)=>c.id),
+            currentCardIndex: 0,
+            sessionStartTime: Date.now(),
+            results: initialResults,
+            isCompleted: false,
+            lastReviewDate: 0
+        };
+    }
+    // Zwraca dane bieżącej fiszki
+    getCurrentCard() {
+        return this.cardsInSession[this.state.currentCardIndex];
+    }
+    // Zwraca wynik bieżącej fiszki z tablicy wyników
+    getCurrentResult() {
+        const currentCardId = this.getCurrentCard().id;
+        return this.state.results.find((r)=>r.cardId === currentCardId);
+    }
+    getState() {
+        return this.state;
+    }
+    // --- Logika Oceny ---
+    /**
+     * Ocenia bieżącą fiszkę. Rejestruje czas i wynik.
+     */ gradeCard(grade) {
+        const currentResult = this.getCurrentResult();
+        // Zapobiega ponownej edycji po ocenie
+        if (currentResult.grade !== null) {
+            console.warn("Fiszka ju\u017C oceniona, edycja zablokowana.");
+            return;
+        }
+        const now = Date.now();
+        const timeSpent = now - this.cardStartTime;
+        currentResult.grade = grade;
+        currentResult.timeSpentMs = timeSpent;
+        currentResult.reviewedAt = now;
+        this.checkCompletion();
+        (0, _storage.saveSession)(this.state);
+        // Czas startu dla następnej fiszki
+        this.cardStartTime = Date.now();
+    }
+    // --- Nawigacja ---
+    goToNext() {
+        // Musi być aktywna tylko jeśli nie jesteśmy na końcu
+        if (this.state.currentCardIndex < this.cardsInSession.length - 1) {
+            this.state.currentCardIndex++;
+            this.cardStartTime = Date.now();
+            (0, _storage.saveSession)(this.state);
+            return true;
+        }
+        return false;
+    }
+    goToPrevious() {
+        // Musi być aktywna tylko jeśli nie jesteśmy na początku
+        if (this.state.currentCardIndex > 0) {
+            this.state.currentCardIndex--;
+            this.cardStartTime = Date.now();
+            (0, _storage.saveSession)(this.state);
+            return true;
+        }
+        return false;
+    }
+    // Sprawdzenie, czy wszystkie fiszki są ocenione
+    checkCompletion() {
+        const allGraded = this.state.results.every((r)=>r.grade !== null);
+        if (allGraded && !this.state.isCompleted) {
+            this.state.isCompleted = true;
+            this.stopTimer();
+            (0, _storage.saveSession)(this.state);
+        }
+    }
+    // --- Statystyki i Timery ---
+    /**
+     * Zwraca czas spędzony na bieżącej fiszce (odliczany w milisekundach).
+     */ getTimeOnCurrentCardMs() {
+        return Date.now() - this.cardStartTime;
+    }
+    /**
+     * Zwraca łączny czas trwania sesji (odliczany w milisekundach).
+     */ getTotalSessionTimeMs() {
+        if (this.state.isCompleted) {
+            // Czas liczymy od startu do ostatniej oceny
+            const lastReviewedTime = Math.max(...this.state.results.map((r)=>r.reviewedAt));
+            return lastReviewedTime - this.state.sessionStartTime;
+        }
+        // Jeśli trwa - do teraz
+        return Date.now() - this.state.sessionStartTime;
+    }
+    startTimer(callback) {
+        if (this.timerInterval !== null) return;
+        if (this.state.isCompleted) return;
+        this.timerInterval = setInterval(()=>{
+            const totalTimeStr = this.formatTime(this.getTotalSessionTimeMs());
+            const cardTimeStr = this.formatTime(this.getTimeOnCurrentCardMs());
+            callback(totalTimeStr, cardTimeStr);
+        }, ONE_SECOND); // Użycie as number do zgodności z Node/Browser
+    }
+    stopTimer() {
+        if (this.timerInterval !== null) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+    }
+    // Liczniki
+    getKnownCount() {
+        return this.state.results.filter((r)=>r.grade === 'Known').length;
+    }
+    getNotYetCount() {
+        return this.state.results.filter((r)=>r.grade === 'NotYet').length;
+    }
+    // Formatuje czas z milisekund na "mm:ss"
+    formatTime(ms) {
+        const totalSeconds = Math.floor(ms / ONE_SECOND);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        const pad = (num)=>num.toString().padStart(2, '0');
+        return `${pad(minutes)}:${pad(seconds)}`;
+    }
+    // Oblicza i zwraca podsumowanie sesji
+    getSummary() {
+        const totalTimeMs = this.getTotalSessionTimeMs();
+        const totalCards = this.cardsInSession.length;
+        // Sumujemy tylko czas spędzony na ocenionych fiszkach
+        const totalTimeGraded = this.state.results.reduce((sum, r)=>sum + r.timeSpentMs, 0);
+        const avgTimeMs = totalCards > 0 ? totalTimeGraded / totalCards : 0;
+        const hardCardsIds = this.state.results.filter((r)=>r.grade === 'NotYet').map((r)=>r.cardId);
+        const hardCards = this.deck.cards.filter((card)=>hardCardsIds.includes(card.id));
+        return {
+            known: this.getKnownCount(),
+            notYet: this.getNotYetCount(),
+            totalTime: this.formatTime(totalTimeMs),
+            avgTime: this.formatTime(avgTimeMs),
+            hardCards: hardCards
+        };
+    }
+    // Wymagania blokad
+    isFinishButtonActive() {
+        return this.state.isCompleted;
+    }
+    isCurrentCardGraded() {
+        return this.getCurrentResult().grade !== null;
+    }
+}
+
+},{"../storage/storage":"lXxpO","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"lXxpO":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+/**
+ * Zapisuje stan sesji do localStorage.
+ * @param state - aktualny stan sesji.
+ */ parcelHelpers.export(exports, "saveSession", ()=>saveSession);
+/**
+ * Wczytuje stan sesji z localStorage.
+ * @param deckTitle - tytuł talii.
+ * @returns Zapisany stan sesji lub null.
+ */ parcelHelpers.export(exports, "loadSession", ()=>loadSession);
+/**
+ * Usuwa stan sesji z localStorage.
+ * @param deckTitle - tytuł talii.
+ */ parcelHelpers.export(exports, "clearSession", ()=>clearSession);
+const STORAGE_KEY_PREFIX = 'flashcard_session_';
+function saveSession(state) {
+    const key = STORAGE_KEY_PREFIX + state.deckTitle;
+    try {
+        // Aktualizujemy datę ostatniego przeglądu przy zapisie
+        state.lastReviewDate = Date.now();
+        localStorage.setItem(key, JSON.stringify(state));
+    } catch (e) {
+        console.error("B\u0142\u0105d zapisu do localStorage", e);
+    }
+}
+function loadSession(deckTitle) {
+    const key = STORAGE_KEY_PREFIX + deckTitle;
+    try {
+        const json = localStorage.getItem(key);
+        if (json) return JSON.parse(json);
+    } catch (e) {
+        console.error("B\u0142\u0105d odczytu z localStorage", e);
+    }
+    return null;
+}
+function clearSession(deckTitle) {
+    const key = STORAGE_KEY_PREFIX + deckTitle;
+    localStorage.removeItem(key);
+}
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"jnFvT":[function(require,module,exports,__globalThis) {
+exports.interopDefault = function(a) {
+    return a && a.__esModule ? a : {
+        default: a
+    };
+};
+exports.defineInteropFlag = function(a) {
+    Object.defineProperty(a, '__esModule', {
+        value: true
+    });
+};
+exports.exportAll = function(source, dest) {
+    Object.keys(source).forEach(function(key) {
+        if (key === 'default' || key === '__esModule' || Object.prototype.hasOwnProperty.call(dest, key)) return;
+        Object.defineProperty(dest, key, {
+            enumerable: true,
+            get: function() {
+                return source[key];
+            }
+        });
+    });
+    return dest;
+};
+exports.export = function(dest, destName, get) {
+    Object.defineProperty(dest, destName, {
+        enumerable: true,
+        get: get
+    });
+};
+
+},{}],"fKEhE":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+/**
+ * Generuje HTML dla ekranu startowego.
+ */ parcelHelpers.export(exports, "renderStartScreen", ()=>renderStartScreen);
+/**
+ * Generuje HTML dla widoku pojedynczej fiszki.
+ */ parcelHelpers.export(exports, "renderCardViewHtml", ()=>renderCardViewHtml);
+/**
+ * Generuje HTML dla ekranu podsumowania sesji.
+ */ parcelHelpers.export(exports, "renderSummaryScreen", ()=>renderSummaryScreen);
+const APP_CONTAINER_ID = 'app';
+const appContainer = document.getElementById(APP_CONTAINER_ID);
+function getStatsPanelHtml(session, cardRevealed) {
+    const state = session.getState();
+    const currentCard = session.getCurrentCard();
+    const result = session.getCurrentResult();
+    // Czas aktualizowany dynamicznie przez timer
+    let totalTime = '00:00';
+    let cardTime = '00:00';
+    if (!state.isCompleted) {
+        totalTime = session.formatTime(session.getTotalSessionTimeMs());
+        cardTime = session.formatTime(session.getTimeOnCurrentCardMs());
+    }
+    return `
+        <div class="stats-panel">
+            <div class="stat-item">Bie\u{17C}\u{105}ca fiszka: <strong>${state.currentCardIndex + 1}/${state.cardOrderIds.length}</strong></div>
+            <div class="stat-item">Znam: <strong style="color: #28a745;">${session.getKnownCount()}</strong></div>
+            <div class="stat-item">Jeszcze nie: <strong style="color: #dc3545;">${session.getNotYetCount()}</strong></div>
+            <div class="stat-item">Czas na fiszce: <strong id="card-timer">${cardTime}</strong></div>
+            <div class="stat-item">\u{141}\u{105}czny czas: <strong id="session-timer">${totalTime}</strong></div>
+        </div>
+    `;
+}
+function renderStartScreen(title, count) {
+    return `
+        <h1>\u{1F4D6} ${title}</h1>
+        <p>Witaj w aplikacji do nauki s\u{142}\xf3wek. Got\xf3w na powt\xf3rk\u{119}?</p>
+        <div class="summary-item">Liczba fiszek w talii: <strong>${count}</strong></div>
+        <div class="controls" style="text-align: center; margin-top: 30px;">
+            <button id="start-session-btn" class="btn btn-primary">Rozpocznij sesj\u{119}</button>
+        </div>
+    `;
+}
+function renderCardViewHtml(session, cardRevealed) {
+    const card = session.getCurrentCard();
+    const result = session.getCurrentResult();
+    const isGraded = result.grade !== null;
+    const backContent = cardRevealed ? `<div class="card-back">${card.back}</div>` : `<p style="font-size: 0.8em; color: #888;">Naci\u{15B}nij "Poka\u{17C} odpowied\u{17A}"</p>`;
+    const gradingControls = `
+        <div class="grading-controls" style="display: ${cardRevealed && !isGraded ? 'block' : 'none'};">
+            <p>Jak oceniasz swoj\u{105} znajomo\u{15B}\u{107}?</p>
+            <button id="grade-known-btn" class="btn btn-success" ${isGraded ? 'disabled' : ''}>Znam</button>
+            <button id="grade-notyet-btn" class="btn btn-danger" ${isGraded ? 'disabled' : ''}>Jeszcze nie</button>
+        </div>
+    `;
+    const showAnswerButton = `
+        <button id="show-answer-btn" class="btn btn-secondary" style="display: ${!cardRevealed ? 'block' : 'none'}; margin: 10px auto;">Poka\u{17C} odpowied\u{17A}</button>
+    `;
+    // Nawigacja
+    const isLastCard = session.getState().currentCardIndex === session.getState().cardOrderIds.length - 1;
+    const isFinishActive = session.isFinishButtonActive();
+    const navigationControls = `
+        <div class="controls">
+            <button id="prev-card-btn" class="btn btn-nav" ${session.getState().currentCardIndex === 0 ? 'disabled' : ''}>Poprzednia</button>
+            <button id="next-card-btn" class="btn btn-nav" ${isLastCard ? 'disabled' : ''}>Nast\u{119}pna</button>
+            <button id="finish-session-btn" class="btn btn-primary" ${isFinishActive ? '' : 'disabled'}>Zako\u{144}cz sesj\u{119}</button>
+        </div>
+    `;
+    // Informacja o ocenie (jeśli jest oceniona i nie jest to ekran oceny)
+    let gradedInfo = '';
+    if (isGraded) {
+        const gradeText = result.grade === 'Known' ? "\u2705 ZNANA" : "\u274C JESZCZE NIE";
+        gradedInfo = `<p style="margin-top: 10px; font-weight: bold; color: ${result.grade === 'Known' ? 'green' : 'red'};">Fiszka ju\u{17C} oceniona: ${gradeText}</p>`;
+    }
+    return `
+        <h1>${session.getState().deckTitle}</h1>
+        ${getStatsPanelHtml(session, cardRevealed)}
+        <div class="card-view">
+            <div class="flashcard">
+                ${card.front}
+                ${backContent}
+            </div>
+            ${gradedInfo}
+            ${showAnswerButton}
+            ${gradingControls}
+            ${navigationControls}
+        </div>
+    `;
+}
+function renderSummaryScreen(title, summary) {
+    const hardCardsList = summary.hardCards.length > 0 ? `
+        <h3>Trudne fiszki (${summary.notYet} szt.):</h3>
+        <ul class="hard-cards-list">
+            ${summary.hardCards.map((card)=>`<li><strong>${card.front}</strong> - ${card.back}</li>`).join('')}
+        </ul>
+        ` : `<p>Brak fiszek oznaczonych jako "Jeszcze nie". \u{15A}wietna robota!</p>`;
+    return `
+        <h1>\u{1F389} Podsumowanie Sesji: ${title}</h1>
+        <h2>Wyniki</h2>
+        <div class="stats-panel">
+            <div class="stat-item">Znam: <strong style="color: #28a745;">${summary.known}</strong></div>
+            <div class="stat-item">Jeszcze nie: <strong style="color: #dc3545;">${summary.notYet}</strong></div>
+        </div>
+        <h2>Czasy</h2>
+        <div class="summary-item">\u{141}\u{105}czny czas sesji: <strong>${summary.totalTime}</strong></div>
+        <div class="summary-item">\u{15A}redni czas na fiszk\u{119}: <strong>${summary.avgTime}</strong></div>
+        
+        <h2>Lista do powt\xf3rki</h2>
+        ${hardCardsList}
+        
+        <div class="controls" style="text-align: center; margin-top: 30px;">
+            <button id="return-to-start-btn" class="btn btn-primary">Powr\xf3t do ekranu startowego</button>
+        </div>
+    `;
+}
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}]},["elbaT","gNc1f"], "gNc1f", "parcelRequire170a", {})
 
 //# sourceMappingURL=Test.0f289648.js.map
