@@ -1,5 +1,3 @@
-// src/logic/session.ts
-
 import { Deck, Card, SessionState, CardResult, Grade, SessionSummary, FilterSettings } from '../models/index.js';
 import { loadSession, saveSession, getDeckResults } from '../storage/storage.js'; 
 
@@ -20,7 +18,6 @@ export class FlashcardSession {
         
         const savedState = loadSession(deckData.deckTitle);
         
-        // Sprawdzenie, czy bieżące filtry odpowiadają zapisanym filtrom
         const filterChanged = savedState && JSON.stringify(savedState.filterSettings) !== JSON.stringify(filterSettings);
         
         if (savedState && !filterChanged) {
@@ -37,7 +34,6 @@ export class FlashcardSession {
         }
     }
     
-    // --- Inicjalizacja i Pomocnicze ---
     
     private shuffleArray<T>(array: T[]): void {
         for (let i = array.length - 1; i > 0; i--) {
@@ -50,7 +46,6 @@ export class FlashcardSession {
         let cardsPool = [...this.deck.cards];
         const settings = this.defaultFilterSettings;
         
-        // 1. FILTROWANIE DLA TRYBU POWTÓRKI
         if (settings.repeatOnlyHard) {
             const allResults = getDeckResults(this.deck.deckTitle);
             const hardCardIds = new Set(allResults
@@ -61,21 +56,18 @@ export class FlashcardSession {
 
             if (cardsToRepeat.length > 0) {
                  cardsPool = cardsToRepeat;
-                 // Zastosowanie filtru tagów na zbiorze KART DO POWTÓRKI (jeśli jest ustawiony)
                  if (settings.filterTag) {
                       cardsPool = cardsPool.filter(c => c.tag === settings.filterTag);
                  }
             } else {
-                 // Jeśli brak trudnych, wracamy do normalnej puli, ale zachowujemy filtry tagów, jeśli są ustawione
                  if (settings.filterTag) {
                       cardsPool = this.deck.cards.filter(c => c.tag === settings.filterTag);
                  } else {
                       cardsPool = [...this.deck.cards];
                  }
-                 settings.repeatOnlyHard = false; // Musimy zresetować ustawienie filtra w stanie
+                 settings.repeatOnlyHard = false; 
             }
         } else {
-            // 2. NORMALNE FILTROWANIE PO TAGACH (gdy tryb powtórki jest WYŁĄCZONY)
             if (settings.filterTag) {
                 cardsPool = cardsPool.filter(c => c.tag === settings.filterTag);
             }
@@ -83,12 +75,10 @@ export class FlashcardSession {
         
         this.cardsInSession = cardsPool;
         
-        // 3. Losowanie
         if (settings.shuffle) {
             this.shuffleArray(this.cardsInSession);
         }
         
-        // W przypadku braku kart
         if (this.cardsInSession.length === 0) {
              return {
                 deckTitle: this.deck.deckTitle,
@@ -121,9 +111,7 @@ export class FlashcardSession {
         };
     }
         
-    /**
-     * Zapisuje bieżący czas na karcie (o ile nie została oceniona) przed nawigacją.
-     */
+ 
     private updateTimeSpentBeforeNavigation(): void {
         const currentResult = this.getCurrentResult();
         if (currentResult.grade === null && this.cardStartTime !== 0) {
@@ -151,7 +139,6 @@ export class FlashcardSession {
     public gradeCard(grade: Grade): void {
         const currentResult = this.getCurrentResult();
         
-        // Wymaganie: Po ocenie, edycja jest zablokowana.
         if (currentResult.grade !== null) {
              console.warn("Fiszka już oceniona, edycja zablokowana.");
              return;
@@ -168,15 +155,12 @@ export class FlashcardSession {
         
         this.checkCompletion();
         
-        // Ustawiamy 0, bo czas od teraz będzie mierzony na kolejnej karcie.
         this.cardStartTime = Date.now(); 
     }
     
-    // --- Nawigacja ---
 
     public goToNext(): boolean {
         if (this.state.currentCardIndex < this.cardsInSession.length - 1) {
-            // Zapisz czas na bieżącej karcie PRZED przejściem
             this.updateTimeSpentBeforeNavigation();
             
             this.state.currentCardIndex++;
@@ -189,7 +173,6 @@ export class FlashcardSession {
 
     public goToPrevious(): boolean {
         if (this.state.currentCardIndex > 0) {
-            // Zapisz czas na bieżącej karcie PRZED przejściem
             this.updateTimeSpentBeforeNavigation();
             
             this.state.currentCardIndex--;
@@ -209,7 +192,6 @@ export class FlashcardSession {
         }
     }
     
-    // --- Statystyki i Timery ---
 
     public getTimeOnCurrentCardMs(): number {
         const currentResult = this.getCurrentResult();
@@ -220,17 +202,13 @@ export class FlashcardSession {
     }
 
     public getTotalSessionTimeMs(): number {
-        // Jeśli ukończona, obliczamy czas na podstawie sessionStartTime i ostatniej recenzowanej karty
         if (this.state.isCompleted) {
             const lastReviewedTime = Math.max(0, ...this.state.results.map(r => r.reviewedAt));
             return lastReviewedTime > 0 ? lastReviewedTime - this.state.sessionStartTime : 0;
         }
         
-        // Sumujemy czas spędzony na już opuszczonych kartach i dodajemy czas bieżącej
         const timeInPreviousCards = this.state.results
             .reduce((sum, r, index) => {
-                // Dodajemy czas tylko, jeśli karta została opuszczona (index < currentCardIndex) 
-                // lub jeśli jest to bieżąca karta, obsłużymy ją później
                 if (index < this.state.currentCardIndex) {
                     return sum + r.timeSpentMs;
                 }
@@ -277,7 +255,6 @@ export class FlashcardSession {
     }
 
     public getSummary(): SessionSummary {
-        // Upewniamy się, że czas dla ostatniej karty jest zaktualizowany (jeśli była ręcznie opuszczona/ukończona)
         if (!this.state.isCompleted) {
             this.updateTimeSpentBeforeNavigation();
         }

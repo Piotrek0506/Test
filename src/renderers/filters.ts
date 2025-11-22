@@ -1,9 +1,6 @@
 import { Deck, FilterSettings } from '../models/index.js';
 import { FlashcardSession } from '../logic/session.js'; 
 
-/**
- * Generuje HTML dla panelu ustawień i filtrów na ekranie startowym.
- */
 export function renderFilterPanel(deck: Deck, currentSettings: FilterSettings): string {
     const tempSession = new FlashcardSession(deck, currentSettings);
     const uniqueTags = tempSession.getTagsInDeck();
